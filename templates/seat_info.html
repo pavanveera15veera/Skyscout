@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyRoute — Seat Availability</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{--navy:#0a1628;--ink:#0f2244;--gold:#c9a84c;--gold2:#e8c96d;--white:#ffffff;
+          --muted:#6b7d9c;--green:#2ec97a;--red:#e8614d;--glass:rgba(255,255,255,0.04);
+          --border:rgba(201,168,76,0.2);}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--navy);min-height:100vh;color:var(--white);}
+    .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 70% 50% at 70% 10%,#0d1e3a 0%,var(--navy) 65%);}
+
+    nav{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;
+        padding:22px 40px;border-bottom:1px solid rgba(255,255,255,0.06);}
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+    .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));
+               border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .logo-text{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--white);}
+    .logo-text span{color:var(--gold);}
+    .back{padding:8px 20px;background:var(--glass);border:1px solid var(--border);border-radius:8px;
+           color:var(--gold);font-size:0.85rem;text-decoration:none;transition:background 0.2s;}
+    .back:hover{background:rgba(201,168,76,0.1);}
+
+    .page{position:relative;z-index:10;display:grid;grid-template-columns:380px 1fr;gap:32px;
+          padding:36px 40px 60px;max-width:1100px;margin:0 auto;}
+
+    /* Cards */
+    .card{background:rgba(15,34,68,0.75);backdrop-filter:blur(16px);border:1px solid var(--border);
+          border-radius:18px;padding:28px 30px;margin-bottom:20px;animation:fadeUp 0.5s both;}
+    .card:last-child{margin-bottom:0;}
+    .card-lbl{font-size:0.68rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;
+              color:var(--gold);margin-bottom:18px;}
+    .fn{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;margin-bottom:4px;}
+    .al{color:var(--muted);font-size:0.88rem;margin-bottom:22px;}
+
+    .route-display{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+    .ap-block{flex:1;}
+    .ap-code{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;}
+    .ap-city{font-size:0.78rem;color:var(--muted);margin-top:2px;}
+    .ap-name{font-size:0.68rem;color:rgba(107,125,156,0.7);margin-top:1px;}
+    .rarr{color:var(--gold);font-size:1.3rem;}
+
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .info-item .lbl{font-size:0.68rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;
+                    color:var(--muted);margin-bottom:4px;}
+    .info-item .val{font-size:0.95rem;font-weight:500;}
+    .arrival-note{font-size:0.7rem;color:var(--gold);margin-top:2px;}
+
+    /* Stats */
+    .stat-row{display:flex;justify-content:space-between;align-items:center;
+              padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+    .stat-row:last-of-type{border-bottom:none;}
+    .stat-lbl{font-size:0.85rem;color:var(--muted);}
+    .stat-val{font-size:1.15rem;font-weight:700;}
+    .green{color:var(--green);}.red{color:var(--red);}.gold{color:var(--gold);}
+
+    .prog-wrap{margin-top:18px;}
+    .prog-hdr{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-bottom:8px;}
+    .prog-track{height:10px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;}
+    .prog-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--gold),var(--gold2));
+               transition:width 1s cubic-bezier(.4,0,.2,1);}
+    .prog-fill.full{background:linear-gradient(90deg,var(--red),#ff8c7a);}
+
+    /* Seat Map */
+    .map-card{background:rgba(15,34,68,0.75);backdrop-filter:blur(16px);border:1px solid var(--border);
+              border-radius:18px;padding:28px 30px;animation:fadeUp 0.5s 0.15s both;}
+    .map-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+    .map-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;}
+    .legend{display:flex;gap:14px;}
+    .leg-item{display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);}
+    .leg-dot{width:12px;height:12px;border-radius:3px;}
+    .leg-dot.a{background:rgba(46,201,122,0.3);border:1px solid var(--green);}
+    .leg-dot.b{background:rgba(232,97,77,0.3);border:1px solid var(--red);}
+
+    .nose{display:flex;justify-content:center;margin-bottom:14px;}
+    .nose-shape{width:56px;height:26px;background:rgba(255,255,255,0.04);
+                border:1px solid var(--border);border-radius:50% 50% 0 0;
+                display:flex;align-items:center;justify-content:center;
+                font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;}
+
+    .col-labels{display:grid;grid-template-columns:28px repeat(3,34px) 18px repeat(3,34px);
+                gap:4px;margin-bottom:6px;}
+    .col-lbl{text-align:center;font-size:0.62rem;color:var(--muted);font-weight:500;}
+    .seat-rows{overflow-y:auto;max-height:480px;}
+    .seat-row{display:grid;grid-template-columns:28px repeat(3,34px) 18px repeat(3,34px);
+              gap:4px;margin-bottom:4px;align-items:center;}
+    .rnum{font-size:0.68rem;color:var(--muted);text-align:right;padding-right:4px;}
+    .seat{width:34px;height:28px;border-radius:5px 5px 3px 3px;display:flex;align-items:center;
+          justify-content:center;font-size:0.58rem;font-weight:600;border:1px solid;}
+    .seat.av{background:rgba(46,201,122,0.12);border-color:rgba(46,201,122,0.4);color:var(--green);}
+    .seat.bk{background:rgba(232,97,77,0.12);border-color:rgba(232,97,77,0.35);color:var(--red);}
+    .aisle{width:18px;}
+
+    /* Booked passengers */
+    .pax-section{margin-top:20px;border-top:1px solid rgba(255,255,255,0.06);padding-top:18px;}
+    .pax-title{font-size:0.68rem;color:var(--muted);text-transform:uppercase;
+               letter-spacing:0.1em;margin-bottom:12px;}
+    .pax-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;}
+    .pax-item{display:flex;justify-content:space-between;align-items:center;
+              padding:7px 12px;background:rgba(255,255,255,0.03);border-radius:6px;
+              font-size:0.82rem;}
+    .pax-seat{font-family:monospace;color:var(--gold);font-size:0.82rem;}
+
+    .notfound{text-align:center;padding:80px;color:var(--muted);}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+    @media(max-width:860px){.page{grid-template-columns:1fr;padding:20px;}}
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <nav>
+    <a href="/" class="logo"><div class="logo-icon">✈</div><div class="logo-text">Sky<span>Route</span></div></a>
+    <a href="javascript:history.back()" class="back">← Back to Results</a>
+  </nav>
+
+  {% if info %}
+  <div class="page">
+    <!-- Left Column -->
+    <div>
+      <!-- Flight Details -->
+      <div class="card">
+        <div class="card-lbl">✦ Flight Details</div>
+        <div class="fn">{{ info.flight_number }}</div>
+        <div class="al">{{ info.airline_name }}</div>
+        <div class="route-display">
+          <div class="ap-block">
+            <div class="ap-code">{{ info.origin_code }}</div>
+            <div class="ap-city">{{ info.origin_city }}</div>
+            <div class="ap-name">{{ info.origin_name }}</div>
+          </div>
+          <div class="rarr">→</div>
+          <div class="ap-block">
+            <div class="ap-code">{{ info.dest_code }}</div>
+            <div class="ap-city">{{ info.dest_city }}</div>
+            <div class="ap-name">{{ info.dest_name }}</div>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="lbl">Departure Date</div>
+            <div class="val">{{ info.departure_date }}</div>
+          </div>
+          <div class="info-item">
+            <div class="lbl">Departure Time (GMT)</div>
+            <div class="val">{{ info.departure_time }}</div>
+          </div>
+          <div class="info-item">
+            <div class="lbl">Arrival Date</div>
+            <div class="val">{{ arrival.date }}
+              {% if arrival.next_day %}<div class="arrival-note">+1 day</div>{% endif %}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="lbl">Arrival Time (GMT)</div>
+            <div class="val">{{ arrival.time }}</div>
+          </div>
+          <div class="info-item">
+            <div class="lbl">Duration</div>
+            <div class="val">{{ info.duration }}</div>
+          </div>
+          <div class="info-item">
+            <div class="lbl">Aircraft</div>
+            <div class="val">{{ info.plane_type }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seat Stats -->
+      <div class="card">
+        <div class="card-lbl">✦ Seat Availability</div>
+        <div class="stat-row">
+          <span class="stat-lbl">Total Capacity</span>
+          <span class="stat-val gold">{{ info.capacity }}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-lbl">Seats Booked</span>
+          <span class="stat-val red">{{ info.booked_seats }}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-lbl">Seats Available</span>
+          <span class="stat-val {% if info.available_seats > 0 %}green{% else %}red{% endif %}">
+            {{ info.available_seats }}{% if info.available_seats == 0 %} — Fully Booked{% endif %}
+          </span>
+        </div>
+        {% set pct = ((info.booked_seats / info.capacity) * 100)|int %}
+        <div class="prog-wrap">
+          <div class="prog-hdr"><span>Occupancy</span><span>{{ pct }}%</span></div>
+          <div class="prog-track">
+            <div class="prog-fill {% if pct >= 90 %}full{% endif %}" id="bar" style="width:0"></div>
+          </div>
+        </div>
+
+        <!-- Booked passengers -->
+        {% if booked_seats %}
+        <div class="pax-section">
+          <div class="pax-title">Booked seats</div>
+          <div class="pax-list">
+            {% for s in booked_seats %}
+            <div class="pax-item">
+              <span>Seat {{ s }}</span>
+              <span class="pax-seat">{{ s }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Seat Map -->
+    <div class="map-card">
+      <div class="map-hdr">
+        <div class="map-title">Seat Map — {{ info.plane_type }}</div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot a"></div>Available</div>
+          <div class="leg-item"><div class="leg-dot b"></div>Booked</div>
+        </div>
+      </div>
+      <div class="nose"><div class="nose-shape">FRONT</div></div>
+      <div class="col-labels">
+        <div></div>
+        <div class="col-lbl">A</div><div class="col-lbl">B</div><div class="col-lbl">C</div>
+        <div></div>
+        <div class="col-lbl">D</div><div class="col-lbl">E</div><div class="col-lbl">F</div>
+      </div>
+      <div class="seat-rows" id="seatMap"></div>
+    </div>
+  </div>
+
+  <script>
+    // Progress bar
+    setTimeout(() => { document.getElementById('bar').style.width = '{{ pct }}%'; }, 200);
+
+    // Seat map — DB stores seats as integers 1,2,3...capacity
+    const cap     = {{ info.capacity }};
+    const booked  = new Set({{ booked_seats | tojson }});
+    const numRows = Math.ceil(cap / 6);
+    const letters = ['A','B','C','D','E','F'];
+    const mapEl   = document.getElementById('seatMap');
+
+    let seatNum = 1; // matches DB integer seat_number
+    for (let r = 1; r <= numRows; r++) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'seat-row';
+      const num = document.createElement('div');
+      num.className = 'rnum'; num.textContent = r;
+      rowEl.appendChild(num);
+      letters.forEach((l, i) => {
+        if (i === 3) {
+          const aisle = document.createElement('div');
+          aisle.className = 'aisle'; rowEl.appendChild(aisle);
+        }
+        if (seatNum > cap) {
+          // empty placeholder to keep grid shape
+          const ph = document.createElement('div');
+          ph.className = 'aisle'; rowEl.appendChild(ph);
+          return;
+        }
+        const isBooked = booked.has(seatNum);
+        const el = document.createElement('div');
+        el.className = 'seat ' + (isBooked ? 'bk' : 'av');
+        el.textContent = `${r}${l}`;
+        el.title = `Seat ${seatNum} (${r}${l}) — ${isBooked ? 'Booked' : 'Available'}`;
+        rowEl.appendChild(el);
+        seatNum++;
+      });
+      mapEl.appendChild(rowEl);
+    }
+  </script>
+
+  {% else %}
+  <div class="notfound">
+    <p style="font-size:1.2rem;">Flight not found.</p>
+    <br><a href="/" style="color:var(--gold);">← Back to Search</a>
+  </div>
+  {% endif %}
+</body>
+</html>
